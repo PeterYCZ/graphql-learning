@@ -1,16 +1,25 @@
 package com.graphql.learning;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import com.graphql.learning.eneity.Book;
 import graphql.schema.DataFetcher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.beans.BeanMap;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class GraphQLDataFetchers {
 
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    /*
     private static List<Map<String, String>> books = Arrays.asList(
             ImmutableMap.of("id", "book-1",
                     "name", "Harry Potter and the Philosopher's Stone",
@@ -24,7 +33,7 @@ public class GraphQLDataFetchers {
                     "name", "Interview with the vampire",
                     "pageCount", "371",
                     "authorId", "author-3")
-    );
+    );*/
 
     private static List<Map<String, String>> authors = Arrays.asList(
             ImmutableMap.of("id", "author-1",
@@ -40,6 +49,14 @@ public class GraphQLDataFetchers {
 
     public DataFetcher getBookByIdDataFetcher() {
         return dataFetchingEnvironment -> {
+            Set<Object> bookSet = redisTemplate.opsForSet().members("book");
+
+            List<Map<String, String>> books = new ArrayList<>();
+
+            for (Object object : bookSet) {
+                books.add((Map<String, String>) object);
+            }
+
             String bookId = dataFetchingEnvironment.getArgument("id");
             return books
                     .stream()
@@ -70,6 +87,17 @@ public class GraphQLDataFetchers {
                     .findFirst()
                     .orElse(null);
         };
+    }
+
+    public static <T> Map<String, String> beanToMap(T bean) {
+        Map<String, String> map = Maps.newHashMap();
+        if (bean != null) {
+            BeanMap beanMap = BeanMap.create(bean);
+            for (Object key : beanMap.keySet()) {
+                map.put(key + "", (String) beanMap.get(key));
+            }
+        }
+        return map;
     }
 
 }
